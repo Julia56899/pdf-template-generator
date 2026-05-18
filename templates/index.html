@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+
+    <!-- Кодировка UTF-8 нужна для корректного отображения кириллицы -->
+    <meta charset="UTF-8">
+
+    <!-- Название вкладки браузера -->
+    <title>PDF Generator</title>
+
+    <!-- Подключение CSS стилей визуального редактора Quill -->
+    <link
+            href="https://cdn.quilljs.com/1.3.7/quill.snow.css"
+            rel="stylesheet"
+    >
+
+    <style>
+
+        /* Основные стили страницы */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #e8e8e8;
+        }
+
+        /* Основной контейнер */
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Левая панель */
+        .left-panel {
+            flex: 1;
+            background: #dff5df;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        /* Правая панель */
+        .right-panel {
+            flex: 1;
+            background: #eee6ff;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        /* HTML редактор */
+        #editor {
+            height: 300px;
+            margin-bottom: 15px;
+        }
+
+        /* Кнопки */
+        button {
+            padding: 14px 26px;
+            margin: 5px;
+            border: 2px solid #444;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Сохранение */
+        .btn-save {
+            background: #FFB347;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* PDF */
+        .btn-pdf {
+            background: #FF6B6B;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Preview */
+        .btn-preview {
+            background: #D2B48C;
+            color: white;
+        }
+
+        /* Удаление */
+        .btn-delete {
+            background: #A1887F;
+            color: white;
+        }
+
+        /* Контейнер кнопок */
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* Список шаблонов */
+        .template-list {
+            margin-top: 20px;
+        }
+
+        /* Один шаблон */
+        .template-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #e3e3e3;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Наведение */
+        .template-item:hover {
+            background: #d1d1d1;
+        }
+
+        /* Активный шаблон */
+        .template-item.active {
+            background: #bbdefb;
+            border: 2px solid #2196F3;
+        }
+
+        /* Блок маркеров */
+        .marker-inputs {
+            margin-top: 15px;
+        }
+
+        /* Поля ввода */
+        .marker-inputs input {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* PDF preview */
+        #pdf-preview {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ccc;
+            margin-top: 15px;
+        }
+
+        /* Заголовки */
+        h2 {
+            margin-top: 0;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Левая панель -->
+    <div class="left-panel">
+
+        <h2>Создание PDF документов</h2>
+
+        <!-- Название шаблона -->
+        <input
+                type="text"
+                id="template-name"
+                placeholder="Название шаблона"
+                style="
+                width:100%;
+                padding:8px;
+                margin-bottom:10px;
+                border:1px solid #ccc;
+                border-radius:4px;
+            "
+        >
+
+        <!-- HTML редактор -->
+        <div id="editor"></div>
+
+        <!-- Кнопки -->
+        <div class="button-row">
+
+            <!-- Сохранение -->
+            <button
+                    class="btn-save"
+                    onclick="saveTemplate()"
+            >
+                Сохранить шаблон
+            </button>
+
+            <!-- Новый шаблон -->
+            <button
+                    class="btn-preview"
+                    onclick="newTemplate()"
+            >
+                Новый шаблон
+            </button>
+
+            <!-- PDF -->
+            <button
+                    class="btn-pdf"
+                    onclick="renderPDF()"
+            >
+                Скачать PDF
+            </button>
+
+            <!-- HTML preview -->
+            <button
+                    class="btn-preview"
+                    onclick="previewTemplate()"
+            >
+                Предпросмотр документа
+            </button>
+
+            <!-- Удаление -->
+            <button
+                    class="btn-delete"
+                    onclick="deleteTemplate()"
+            >
+                Удалить шаблон
+            </button>
+
+        </div>
+
+        <!-- Список шаблонов -->
+        <div class="template-list">
+
+            <h3>Сохраненные шаблоны</h3>
+
+            <div id="template-list"></div>
+
+        </div>
+
+    </div>
+
+    <!-- Правая панель -->
+    <div class="right-panel">
+
+        <h2>Подстановка значений</h2>
+
+        <!-- Поля маркеров -->
+        <div
+                class="marker-inputs"
+                id="marker-inputs"
+        >
+
+            <p style="color:#999;">
+                Добавьте маркеры вида {name}
+            </p>
+
+        </div>
+
+        <!-- Обновление preview -->
+        <div class="button-row">
+
+            <button
+                    class="btn-preview"
+                    onclick="updatePreview()"
+            >
+                Обновить предпросмотр PDF
+            </button>
+
+        </div>
+
+        <!-- PDF preview -->
+        <h3>Предпросмотр PDF</h3>
+
+        <iframe id="pdf-preview"></iframe>
+
+    </div>
+
+</div>
+
+<!-- Quill -->
+<script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
+
+<script>
+
+    // Инициализация редактора
+
+    var quill = new Quill('#editor', {
+
+        theme: 'snow',
+
+        placeholder: 'Введите HTML шаблон...',
+
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                [{ 'header': [1, 2, 3, false] }],
+                ['clean']
+            ]
+        }
+    });
+
+
+    // ID текущего шаблона
+
+    var currentTemplateId = null;
+
+
+    // Создание нового шаблона
+
+    function newTemplate() {
+
+        // Сбрасываем ID
+
+        currentTemplateId = null;
+
+        // Очищаем название
+
+        document.getElementById(
+            'template-name'
+        ).value = '';
+
+        // Очищаем редактор
+
+        quill.root.innerHTML = '';
+
+        // Очищаем поля маркеров
+
+        document.getElementById(
+            'marker-inputs'
+        ).innerHTML =
+            '<p style="color:#999;">Добавьте маркеры вида {name}</p>';
+
+        // Очищаем PDF preview
+
+        document.getElementById(
+            'pdf-preview'
+        ).src = '';
+
+        // Убираем выделение
+
+        var items =
+            document.querySelectorAll(
+                '.template-item'
+            );
+
+        items.forEach(function(item) {
+            item.classList.remove('active');
+        });
+    }
+
+
+    // Загружает список шаблонов
+
+    function loadTemplates() {
+
+        fetch('/templates')
+
+            .then(response => response.json())
+
+            .then(templates => {
+
+                var listDiv =
+                    document.getElementById('template-list');
+
+                listDiv.innerHTML = '';
+
+                templates.forEach(function(template) {
+
+                    var div =
+                        document.createElement('div');
+
+                    div.className = 'template-item';
+
+                    div.textContent =
+                        template.name +
+                        ' (ID: ' +
+                        template.id +
+                        ')';
+
+                    div.onclick = function(event) {
+
+                        loadTemplateToEditor(
+                            template.id
+                        );
+
+                        var items =
+                            document.querySelectorAll(
+                                '.template-item'
+                            );
+
+                        items.forEach(function(item) {
+                            item.classList.remove('active');
+                        });
+
+                        event.target.classList.add('active');
+                    };
+
+                    listDiv.appendChild(div);
+                });
+            });
+    }
+
+
+    // Загружает шаблон в редактор
+
+    function loadTemplateToEditor(id) {
+
+        fetch('/templates/' + id)
+
+            .then(response => response.json())
+
+            .then(template => {
+
+                currentTemplateId = template.id;
+
+                document.getElementById(
+                    'template-name'
+                ).value = template.name;
+
+                quill.root.innerHTML =
+                    template.content;
+
+                updateMarkerInputs(
+                    template.content
+                );
+            });
+    }
+
+
+    // Сохранение шаблона
+
+    function saveTemplate() {
+
+        var name =
+            document.getElementById(
+                'template-name'
+            ).value;
+
+        var content =
+            quill.root.innerHTML;
+
+        // По умолчанию создаем новый шаблон
+
+        var url = '/templates';
+        var method = 'POST';
+
+        // Если выбран существующий —
+        // обновляем его
+
+        if (currentTemplateId) {
+
+            url =
+                '/templates/' +
+                currentTemplateId;
+
+            method = 'PUT';
+        }
+
+        fetch(url, {
+
+            method: method,
+
+            headers: {
+                'Content-Type': 'application/json'
+            },
+
+            body: JSON.stringify({
+                name: name,
+                content: content
+            })
+
+        })
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            // Сохраняем ID
+
+            if (!currentTemplateId) {
+                currentTemplateId = data.id;
+            }
+
+            alert(
+                'Шаблон сохранен'
+            );
+
+            loadTemplates();
+
+            updateMarkerInputs(content);
+        });
+    }
+
+
+    // Удаление шаблона
+
+    function deleteTemplate() {
+
+        if (!currentTemplateId) {
+
+            alert(
+                'Сначала выберите шаблон'
+            );
+
+            return;
+        }
+
+        if (!confirm('Удалить шаблон?')) {
+            return;
+        }
+
+        fetch(
+            '/templates/' + currentTemplateId,
+            {
+                method: 'DELETE'
+            }
+        )
+
+        .then(() => {
+
+            newTemplate();
+
+            loadTemplates();
+
+            alert('Шаблон удален');
+        });
+    }
+
+
+    // Поиск маркеров
+
+    function updateMarkerInputs(htmlContent) {
+
+        var regex = /\{([^}]+)\}/g;
+
+        var markers = [];
+
+        var match;
+
+        while (
+            (match = regex.exec(htmlContent))
+            !== null
+        ) {
+
+            if (
+                markers.indexOf(match[1])
+                === -1
+            ) {
+                markers.push(match[1]);
+            }
+        }
+
+        var inputsDiv =
+            document.getElementById(
+                'marker-inputs'
+            );
+
+        inputsDiv.innerHTML = '';
+
+        if (markers.length === 0) {
+
+            inputsDiv.innerHTML =
+                '<p style="color:#999;">Маркеры не найдены</p>';
+
+            return;
+        }
+
+        markers.forEach(function(marker) {
+
+            var label =
+                document.createElement('label');
+
+            label.textContent =
+                marker + ':';
+
+            label.style.display = 'block';
+
+            label.style.marginTop = '10px';
+
+            var input =
+                document.createElement('input');
+
+            input.type = 'text';
+
+            input.placeholder =
+                'Введите значение';
+
+            input.dataset.marker = marker;
+
+            inputsDiv.appendChild(label);
+
+            inputsDiv.appendChild(input);
+        });
+    }
+
+
+    // Сбор значений
+
+    function collectMarkerValues() {
+
+        var values = {};
+
+        var inputs =
+            document.querySelectorAll(
+                '#marker-inputs input'
+            );
+
+        inputs.forEach(function(input) {
+
+            var marker =
+                input.dataset.marker;
+
+            var value =
+                input.value;
+
+            values[marker] = value;
+        });
+
+        return values;
+    }
+
+
+    // HTML preview
+
+    function previewTemplate() {
+
+        if (!currentTemplateId) {
+
+            alert(
+                'Сначала сохраните шаблон'
+            );
+
+            return;
+        }
+
+        var values =
+            collectMarkerValues();
+
+        fetch(
+            '/preview/' +
+            currentTemplateId,
+
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                body: JSON.stringify(values)
+            }
+        )
+
+        .then(response => response.text())
+
+        .then(html => {
+
+            var previewWindow =
+                window.open(
+                    '',
+                    '_blank'
+                );
+
+            previewWindow.document.write(html);
+
+            previewWindow.document.close();
+        });
+    }
+
+
+    // Генерация PDF
+
+    function renderPDF() {
+
+        if (!currentTemplateId) {
+
+            alert(
+                'Сначала сохраните шаблон'
+            );
+
+            return;
+        }
+
+        var values =
+            collectMarkerValues();
+
+        fetch(
+            '/render/' +
+            currentTemplateId,
+
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                body: JSON.stringify(values)
+            }
+        )
+
+        .then(response => response.blob())
+
+        .then(blob => {
+
+            var url =
+                window.URL.createObjectURL(blob);
+
+            var a =
+                document.createElement('a');
+
+            a.href = url;
+
+            a.download =
+                'document_' +
+                currentTemplateId +
+                '.pdf';
+
+            document.body.appendChild(a);
+
+            a.click();
+
+            window.URL.revokeObjectURL(url);
+
+            document.body.removeChild(a);
+        });
+    }
+
+
+    // Обновление PDF preview
+
+    function updatePreview() {
+
+        if (!currentTemplateId) {
+
+            alert(
+                'Сначала сохраните шаблон'
+            );
+
+            return;
+        }
+
+        var values =
+            collectMarkerValues();
+
+        fetch(
+            '/render/' +
+            currentTemplateId,
+
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                body: JSON.stringify(values)
+            }
+        )
+
+        .then(response => response.blob())
+
+        .then(blob => {
+
+            var url =
+                window.URL.createObjectURL(blob);
+
+            document.getElementById(
+                'pdf-preview'
+            ).src = url;
+        });
+    }
+
+
+    // Загружаем шаблоны при открытии страницы
+
+    loadTemplates();
+
+</script>
+
+</body>
+
+</html>
